@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<!-- added heading and tennis logo -->
+<h1 align="center"> <img height="60" src="logo.jpg"/>Which country dominates the Game?<img height="60" src="logo.jpg"/></h1>
+<!-- Load d3.js and other libraries-->
+<script src="http://d3js.org/d3.v4.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/queue.v1.min.js"></script>
+<script src="https://d3js.org/topojson.v1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-tip/0.7.1/d3-tip.min.js"></script> 
+<script src="jquery-3.4.1.min.js"></script>
+<script src="d3-tip.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+<!-- adding bar plot -->
+<script type="text/javascript" src="dummy.js"></script>
+ 
+<!-- Create an element where the map will take place -->
+<svg id="my_dataviz" width="1000" height="1000" position="fixed"></svg>
+<svg id='my_bar' width="500" height="500" position="fixed">knk</svg>
+
+
+<style>
+  .d3-tip {
+    line-height: 1.5;
+    font-weight: 400;
+    font-family:"avenir next", Arial, sans-serif;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #FFA500;
+    border-radius: 1px;
+    pointer-events: none;
+    }
+
+    /* Creates a small triangle extender for the tooltip */
+    .d3-tip:after {      
+      box-sizing: border-box;
+      display: inline;
+      font-size: 8px;
+      width: 100%;
+      line-height: 1.5;
+      color: rgba(0, 0, 0, 0.6);
+      position: absolute;
+      pointer-events: none;
+      
+    }
+
+    /* Northward tooltips */
+    .d3-tip.n:after {
+      content: "\25BC";
+      margin: -1px 0 0 0;
+      top: 100%;
+      left: 0;
+      text-align: center;
+    }
+
+    /* Eastward tooltips */
+    .d3-tip.e:after {
+      content: "\25C0";
+      margin: -4px 0 0 0;
+      top: 50%;
+      left: -8px;
+    }
+
+    /* Southward tooltips */
+    .d3-tip.s:after {
+      content: "\25B2";
+      margin: 0 0 1px 0;
+      top: -8px;
+      left: 0;
+      text-align: center;
+    }
+
+    /* Westward tooltips */
+    .d3-tip.w:after {
+      content: "\25B6";
+      margin: -4px 0 0 -1px;
+      top: 50%;
+      left: 100%;
+    }
+
+    .details{
+      color:white;
+    }
+</style>
+
+
+
+
+<script>
+
+var format = d3.format(",");
+
+// tool-tip 1
+var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([-10, 0])
+            .html(function(d) {
+              return "<strong>Country: </strong><span class='details'>" + d.properties.name + "<br></span>" + "<strong>Winning Percentage: </strong><span class='details'>" + format(d.total)+"%" +"</span>" + "<br>" + "Click for more details" ;
+            })
+
+// tool tip 2
+var tip2 = d3.tip()
+              .attr('class','d3-tip')
+              .offset([-10,0])
+              .html(function(d){
+                return "<strong> Never Participated in Australian Open</strong";
+              })
+
+// The svg
+var svg = d3.select("svg"),
+  width = +svg.attr("width"),
+  height = +svg.attr("height");
+
+// Map and projection
+var path = d3.geoPath();
+var projection = d3.geoMercator()
+  .scale(140)
+  .center([0,20])
+  .translate([width / 2, height / 2]);
+
+// Data and color scale
+var data = d3.map();
+var colorScale = d3.scaleThreshold().domain([0,15,31,52,60,70,100]).range(['#ccc','#FDFECD','#D9EFBE','#89CFBA','#58BBC1','#3689B8','#273992','#ccc']);
+
+// Load external data and boot
+d3.queue()
+  .defer(d3.json, "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
+  .defer(d3.csv, "final_data_1.csv", function(d) { data.set(d.code, +d.val); })
+  .await(ready);
+
+
+//calling tip
+svg.call(tip);
+svg.call(tip2);
+//adding function to create legend
+function legend()
+{
+  var w = 300, h = 50;
+
+      var key = d3.select("#my_dataviz")
+        .append("svg")
+        .attr("width", w)
+        .attr("height", h);
+
+      var legend = key.append("defs")
+        .append("svg:linearGradient")
+        .attr("id", "gradient")
+        .attr("x1", "0%")
+        .attr("y1", "100%") 
+        .attr("x2", "100%")
+        .attr("y2", "100%")
+        .attr("spreadMethod", "pad");
+
+      legend.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", "#f7fcf0")
+        .attr("stop-opacity", 1);
+
+      legend.append("stop")
+        .attr("offset", "33%")
+        .attr("stop-color", "#bae4bc")
+        .attr("stop-opacity", 1);
+
+      legend.append("stop")
+        .attr("offset", "66%")
+        .attr("stop-color", "#7bccc4")
+        .attr("stop-opacity", 1);
+
+      legend.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", "#273992")
+        .attr("stop-opacity", 1);
+
+      key.append("rect")
+        .attr("width", w)
+        .attr("height", h - 30)
+        .style("fill", "url(#gradient)")
+        .attr("transform", "translate(0,10)");
+
+      var y = d3.scaleLinear()
+        .range([300, 0])
+        .domain([68, 12]);
+
+      var yAxis = d3.axisBottom()
+        .scale(y)
+        .ticks(5);
+
+      key.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate(0,30)")
+        .call(yAxis)
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 0)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("axis title");
+
+}
+
+// calling legend function
+legend();
+
+
+var countries=["USA","ESP","RUS","SUI","SRB","FRA","AUS","FRA","CYP","GER","CHI","ARG","SVK","CRO","MAR","FIN","GBR","JPN","BUL","CZE","UKR"];
+
+function ready(error, topo) {
+
+  
+  let mouseOver = function(d) {
+    if(d.total != 0)
+    {
+        tip.show(d);
+    }
+    else
+    {
+      tip2.show();
+    }
+    
+    svg.on("click",function(){d3.select("#my_bar2").remove();
+                              bar_plot(d.id);})
+    console.log(d.id);
+  	current_position = d3.mouse(this); 
+    
+    d3.selectAll(".Country")
+      .transition()
+      .duration(200)
+      .style("opacity", .5)
+    d3.select(this)
+      .transition()
+      .duration(200)
+      .style("opacity", 1)
+      .style("stroke", "black")
+      
+  }
+
+  
+    
+  
+
+  let mouseLeave = function(d) {
+    tip.hide(d);
+    tip2.hide();
+    svg.on("click",function(){d3.select("#my_bar2").remove();})
+      d3.selectAll(".Country")
+      .transition()
+      .duration(200)
+      .style("opacity", .8)
+    d3.select(this)
+      .transition()
+      .duration(100)
+      .style("stroke", "transparent")
+     
+
+  }
+
+  // Draw the map
+  svg.append("g")
+    .selectAll("path")
+    .data(topo.features)
+    .enter()
+    .append("path")
+      // draw each country
+      .attr("d", d3.geoPath()
+        .projection(projection)
+      )
+      // set the color of each country
+      .attr("fill", function (d) {
+        d.total = data.get(d.id) || 0;
+        return colorScale(d.total);
+      })
+      .style("stroke", "black")
+      .attr("class", function(d){ return "Country" } )
+      .style("opacity", .8)
+      .on("mouseover", mouseOver )
+      .on("mouseleave", mouseLeave )
+    }
+
+</script>
